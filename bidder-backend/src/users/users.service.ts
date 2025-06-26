@@ -18,7 +18,7 @@ export class UsersService implements OnModuleInit {
   async seedUsers(): Promise<void> {
     const count = await this.usersRepository.count();
     if (count === 0) {
-      const users : any[] = [];
+      const users: any[] = [];
       for (let i = 1; i <= 100; i++) {
         users.push({
           username: `user${i}`,

@@ -2,18 +2,16 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  Logger
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Bid } from './bid.entity';
-import { BidGateway } from './bid.gateway';;;
+import { BidGateway } from './bid.gateway';
 import { Item } from '../items/item.entity';
 import { User } from '../users/user.entity';
 
 @Injectable()
 export class BidsService {
-
   constructor(
     @InjectRepository(Bid)
     private bidsRepository: Repository<Bid>,
@@ -29,11 +27,11 @@ export class BidsService {
 
   async placeBid(itemId: number, userId: number, amount: number): Promise<Bid> {
     // Validate user exists
-    const user = await this.usersRepository.findOne({ where: { id: userId }});
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
     // Validate item exists
-    const item = await this.itemsRepository.findOne({ where: { id: itemId }});
+    const item = await this.itemsRepository.findOne({ where: { id: itemId } });
     if (!item) throw new NotFoundException('Item not found');
 
     const now = new Date();
@@ -51,7 +49,7 @@ export class BidsService {
     // Validate bid amount
     if (amount <= item.currentPrice) {
       throw new BadRequestException(
-        `Bid must be higher than current price ($${item.currentPrice})`
+        `Bid must be higher than current price ($${item.currentPrice})`,
       );
     }
 
@@ -75,22 +73,20 @@ export class BidsService {
       console.error('📢 Broadcast failed:', err);
     }
 
-    console.log(
-      `New bid by user ${userId} on item ${itemId}: $${amount}`
-    );
+    console.log(`New bid by user ${userId} on item ${itemId}: $${amount}`);
 
     return savedBid;
   }
 
   async getHighestBid(itemId: number): Promise<number> {
-    const item = await this.itemsRepository.findOne({ where: { id: itemId }});
+    const item = await this.itemsRepository.findOne({ where: { id: itemId } });
     return item?.currentPrice || 0;
   }
 
   async finalizeAuction(itemId: number): Promise<void> {
     const item = await this.itemsRepository.findOne({
       where: { id: itemId },
-      relations: ['bids', 'bids.user']
+      relations: ['bids', 'bids.user'],
     });
 
     if (!item) return;
@@ -98,17 +94,21 @@ export class BidsService {
     if (item.bids.length === 0) return;
     // Find winning bid
     const winningBid = item.bids.reduce((prev, current) =>
-      (prev.amount > current.amount) ? prev : current
+      prev.amount > current.amount ? prev : current,
     );
 
     if (winningBid) {
       // Add your finalization logic here
       console.log(
-        `Auction ${itemId} won by user ${winningBid.user.id} with bid ${winningBid.amount}`
+        `Auction ${itemId} won by user ${winningBid.user.id} with bid ${winningBid.amount}`,
       );
 
       try {
-        this.bidGateway.broadcastWinningBid(itemId, winningBid.user.id, winningBid.amount);
+        this.bidGateway.broadcastWinningBid(
+          itemId,
+          winningBid.user.id,
+          winningBid.amount,
+        );
         console.log('📢 Broadcast succeeded');
       } catch (err) {
         console.error('📢 Broadcast failed:', err);

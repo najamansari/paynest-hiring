@@ -15,3 +15,15 @@ export class User {
   @OneToMany(() => Bid, (bid) => bid.user)
   bids: Bid[];
 }
+
+@Entity()
+export class UserResponse {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ unique: true })
+  username: string;
+
+  @OneToMany(() => Bid, (bid) => bid.user)
+  bids: Bid[];
+}

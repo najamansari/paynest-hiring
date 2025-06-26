@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDate, IsNumber, IsString, IsOptional, IsNotEmpty, Min } from 'class-validator';
+import {
+  IsDate,
+  IsNumber,
+  IsString,
+  IsOptional,
+  IsNotEmpty,
+  Min,
+} from 'class-validator';
 
 export class CreateItemDto {
   @ApiProperty({ example: 'Antique Vase', description: 'Item name' })
@@ -7,7 +14,10 @@ export class CreateItemDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ example: '18th century artifact', description: 'Item description' })
+  @ApiProperty({
+    example: '18th century artifact',
+    description: 'Item description',
+  })
   @IsString()
   description: string;
 
@@ -20,7 +30,11 @@ export class CreateItemDto {
   @IsNumber()
   duration: number; // Duration in seconds
 
-  @ApiProperty({ example: '2025-01-01 01:01:59', description: 'Optional time at which the auction should start. Defaults to the current time.' })
+  @ApiProperty({
+    example: '2025-01-01 01:01:59',
+    description:
+      'Optional time at which the auction should start. Defaults to the current time.',
+  })
   @IsDate()
   @IsOptional()
   activateAt?: Date; // Optional activation time

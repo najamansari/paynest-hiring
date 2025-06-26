@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -7,7 +7,6 @@ import { BidsService } from '../bids/bids.service';
 
 @Injectable()
 export class AuctionScheduler {
-
   constructor(
     @InjectRepository(Item)
     private itemsRepository: Repository<Item>,
@@ -16,7 +15,7 @@ export class AuctionScheduler {
 
   @Cron('*/10 * * * * *') // Check every 10 seconds
   async handleAuctionLifecycle() {
-    console.log("Checking auctions that have ended")
+    console.log('Checking auctions that have ended');
     const now = new Date();
 
     // Close expired auctions

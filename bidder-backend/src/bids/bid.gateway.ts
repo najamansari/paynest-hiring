@@ -1,24 +1,21 @@
-  import {
+import {
   WebSocketGateway,
   WebSocketServer,
   SubscribeMessage,
   OnGatewayInit,
   OnGatewayConnection,
-  MessageBody,
-  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/auth.guard';
 import { JwtService } from '@nestjs/jwt';
+import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 
 @WebSocketGateway({
   namespace: '/bids',
   cors: {
     origin: '*', // Allow all for testing
-    credentials: true
-  }
+    credentials: true,
+  },
 })
 export class BidGateway implements OnGatewayInit, OnGatewayConnection {
   @WebSocketServer()
@@ -26,7 +23,7 @@ export class BidGateway implements OnGatewayInit, OnGatewayConnection {
 
   constructor(
     private jwtService: JwtService,
-    private usersService: UsersService
+    private usersService: UsersService,
   ) {}
 
   private pendingAuthentications = new Map<string, Promise<void>>();
@@ -37,19 +34,18 @@ export class BidGateway implements OnGatewayInit, OnGatewayConnection {
     this.server = server;
   }
 
-
   private async authenticateClient(client: Socket): Promise<void> {
     try {
-      const token = client.handshake.auth?.token;
+      const token: string = client.handshake.auth?.token as string;
 
       if (!token) throw new Error('No token provided');
 
-      const payload = this.jwtService.verify(token.toString());
+      const payload = this.jwtService.verify<{ sub: number }>(token.toString());
       const user = await this.usersService.findById(payload.sub);
 
       if (!user) throw new Error('User not found');
 
-      client.data.user = user;
+      (client.data as { user: User }).user = user;
       console.log(`🔐 ${user.username} authenticated`);
     } catch (error) {
       throw new Error(`Authentication failed: ${error.message}`);
@@ -70,20 +66,24 @@ export class BidGateway implements OnGatewayInit, OnGatewayConnection {
 
       console.log(`✅ Client ${client.id} authenticated and ready`);
     } catch (error) {
-      console.error(`❌ Authentication failed for ${client.id}: ${error.message}`);
+      console.error(
+        `❌ Authentication failed for ${client.id}: ${error.message}`,
+      );
       client.disconnect();
     }
   }
 
-  private async processRoomJoin(client: Socket, itemId: number) {
-    if (!client.data.user) {
+  private processRoomJoin(client: Socket, itemId: number) {
+    if (!(client.data as { user?: User }).user) {
       throw new Error('Client not authenticated');
     }
 
     const room = `item_${itemId}`;
-    client.join(room);
+    void client.join(room);
 
-    console.log(`🚪 ${client.data.user.username} joined room ${room}`);
+    console.log(
+      `🚪 ${(client.data as { user: User }).user.username} joined room ${room}`,
+    );
     client.emit('roomJoined', { room, success: true });
   }
 
@@ -91,13 +91,13 @@ export class BidGateway implements OnGatewayInit, OnGatewayConnection {
     const pendingJoins = this.pendingRoomJoins.get(client.id);
 
     if (pendingJoins) {
-      pendingJoins.forEach(async data => {
+      for (const data of pendingJoins) {
         try {
-          await this.processRoomJoin(client, data.itemId);
+          this.processRoomJoin(client, data.itemId);
         } catch (error) {
           console.error(`❌ Pending room join failed: ${error.message}`);
         }
-      });
+      }
 
       this.pendingRoomJoins.delete(client.id);
     }
@@ -105,7 +105,7 @@ export class BidGateway implements OnGatewayInit, OnGatewayConnection {
   }
 
   @SubscribeMessage('joinItemRoom')
-  async handleJoinRoom(client: Socket, data: { itemId: number }) {
+  handleJoinRoom(client: Socket, data: { itemId: number }) {
     try {
       // Check if authentication is complete
       const authPromise = this.pendingAuthentications.get(client.id);
@@ -120,7 +120,7 @@ export class BidGateway implements OnGatewayInit, OnGatewayConnection {
       }
 
       // If authentication is complete, process immediately
-      await this.processRoomJoin(client, data.itemId);
+      this.processRoomJoin(client, data.itemId);
     } catch (error) {
       console.error(`❌ Room join error for ${client.id}: ${error.message}`);
       client.emit('error', error.message);
@@ -133,7 +133,7 @@ export class BidGateway implements OnGatewayInit, OnGatewayConnection {
       this.server.to(room).emit('newBid', {
         itemId,
         amount,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
       console.log(`✅ Broadcast to ${room}: $${amount}`);
     } catch (err) {
@@ -148,7 +148,7 @@ export class BidGateway implements OnGatewayInit, OnGatewayConnection {
         itemId,
         userId,
         amount,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
       console.log(`✅ Broadcast to ${room}: $${amount}`);
     } catch (err) {
@@ -156,4 +156,3 @@ export class BidGateway implements OnGatewayInit, OnGatewayConnection {
     }
   }
 }
-

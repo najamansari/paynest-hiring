@@ -1,14 +1,10 @@
+import { Controller, Post, Param, Body, UseGuards, Req } from '@nestjs/common';
 import {
-  Controller,
-  Post,
-  Param,
-  Body,
-  UseGuards,
-  Get,
-  Req,
-  ForbiddenException
-} from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { BidsService } from './bids.service';
 import { JwtAuthGuard } from '../auth/auth.guard';
 import { CreateBidDto } from './dto/create-bid.dto';
@@ -26,21 +22,20 @@ export class BidsController {
   @ApiResponse({
     status: 201,
     description: 'Bid placed successfully',
-    type: Bid
+    type: Bid,
   })
   @ApiResponse({ status: 400, description: 'Bad request' })
   async placeBid(
     @Param('itemId') itemId: number,
     @Body() createBidDto: CreateBidDto,
-    @Req() req
+    @Req() req,
   ) {
     // Ensure user can only bid for themselves
-    const userId = req.user.userId;
+    const userId = Number((req.user as { userId: string }).userId);
     return this.bidsService.placeBid(
       Number(itemId),
-      userId,
-      createBidDto.amount
+      Number(userId),
+      createBidDto.amount,
     );
   }
-
 }

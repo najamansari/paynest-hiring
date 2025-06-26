@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Item } from './item.entity';
@@ -19,7 +19,9 @@ export class ItemsService {
     }
     const now = new Date();
     const activateAt = createItemDto.activateAt || now;
-    const expireAt = new Date(activateAt.getTime() + createItemDto.duration * 1000);
+    const expireAt = new Date(
+      activateAt.getTime() + createItemDto.duration * 1000,
+    );
 
     const item = this.itemsRepository.create({
       ...createItemDto,

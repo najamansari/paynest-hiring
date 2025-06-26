@@ -41,7 +41,6 @@ import * as Joi from 'joi';
 
     ScheduleModule.forRoot(),
 
-
     AuthModule,
     UsersModule,
     ItemsModule,
