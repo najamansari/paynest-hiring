@@ -51,7 +51,7 @@ RUN npm install -g pnpm && pnpm install --prod --frozen-lockfile
 
 # Copy built files
 COPY --from=backend-builder /app/backend/dist ./dist
-COPY --from=frontend-builder /app/frontend/dist ./dist/build
+COPY --from=frontend-builder /app/frontend/dist ./build
 
 # Expose port
 EXPOSE 3000
