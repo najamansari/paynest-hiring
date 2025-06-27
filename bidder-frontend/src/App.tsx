@@ -1,15 +1,9 @@
-import React, { useState, useEffect, createContext, useContext, ReactNode, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, createContext, useContext, type ReactNode, useCallback, useMemo } from 'react';
 import { io, Socket } from 'socket.io-client'; // Import Socket.IO client
 
-// --- API Base URL ---
-// IMPORTANT: Change this to your actual backend API URL
-const API_BASE_URL = '/api'; // Changed to use the proxy path
+const API_BASE_URL = '';
 
 // --- Type Definitions (aligned with OpenAPI Spec) ---
-interface AuthRequestDto {
-  username: string;
-  password: string;
-}
 
 interface AuthResponseDto {
   access_token: string;
@@ -406,13 +400,11 @@ const Dashboard: React.FC<{ setCurrentPage: (page: string, itemId?: number) => v
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, showMessage]);
+  }, [isAuthenticated, showMessage, backendLogout]);
 
   useEffect(() => {
     fetchItems();
-    // This effect should only run when 'isAuthenticated' changes or on initial mount.
-    // 'fetchItems' is now stable due to useCallback and its dependencies.
-  }, [fetchItems]); // This dependency is now stable
+  }, [fetchItems]);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -783,9 +775,9 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (isAuthenticated && backendAccessToken) {
       // Connect to the WebSocket server
-      const newSocket = io('/bids', {
+      const newSocket = io(`${API_BASE_URL}/bids`, {
         auth: { token: backendAccessToken },
-        transports: ['websocket'],
+        // Removed: transports: ['websocket'], // Let Socket.IO choose the best transport
         reconnection: true, // Allow reconnection attempts
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
@@ -805,7 +797,7 @@ const AppContent: React.FC = () => {
         console.error('Socket Connection Error:', err.message);
       });
 
-      newSocket.on('newBid', async (data: { itemId: number; amount: number; bidderId: number }) => {
+      newSocket.on('newBid', async (data: { itemId: number; amount: string; bidderId: number }) => {
         console.log('📢 NEW BID:', data);
         const amount = parseFloat(data.amount);
         try {
@@ -823,7 +815,7 @@ const AppContent: React.FC = () => {
         }
       });
 
-      newSocket.on('winningBid', async (data: { itemId: number; amount: number; userId: number }) => {
+      newSocket.on('winningBid', async (data: { itemId: number; amount: string; userId: number }) => {
         console.log('🏆 WINNING BID:', data);
         const amount = parseFloat(data.amount);
         try {
