@@ -1,7 +1,7 @@
 import { Context } from '@netlify/functions';
 import { Handler } from '@netlify/functions';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { AppModule } from './app.module.js';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import * as express from 'express';
 import * as serverless from 'serverless-http';
@@ -18,12 +18,12 @@ async function bootstrapServer(): Promise<Handler> {
     
     nestApp.enableCors();
     await nestApp.init();
-    cachedServer = serverless(expressApp);
+    cachedServer = serverless(expressApp) as any;
   }
   return cachedServer;
 }
 
-export const handler: Handler = async (event: any, context: Context) => {
+export const handler = async (event: any, context: any) => {
   const server = await bootstrapServer();
-  return server(event, context);
+  return server(event, context as any);
 };
