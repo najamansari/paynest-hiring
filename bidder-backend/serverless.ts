@@ -1,10 +1,10 @@
 import { Context } from '@netlify/functions';
 import { Handler } from '@netlify/functions';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { AppModule } from './src/app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
-import * as express from 'express';
-import * as serverless from 'serverless-http';
+import express from 'express'; // Default import
+import serverless from 'serverless-http'; // Default import
 
 let cachedServer: Handler;
 
@@ -27,3 +27,5 @@ export const handler = async (event: any, context: any) => {
   const server = await bootstrapServer();
   return server(event, context as any);
 };
+
+module.exports = { handler };

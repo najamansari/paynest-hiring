@@ -1,19 +1,34 @@
 #!/bin/bash
 
-# Install backend dependencies
+set -e
+
+echo "Initiating build process..."
+
+# Build backend with serverless config
 cd bidder-backend
+c
 pnpm install --frozen-lockfile
+echo "Running BE serverless build..."
+pnpm run build:serverless
 
-# Copy node_modules to backend directory
+# Create backend directory structure
 mkdir -p ../backend
-cp -R node_modules ../backend/node_modules
+cp -R dist ../backend/dist
+cp package.json ../backend/
 
-# Build backend
-pnpm run build
-cp -R dist ../backend
+# Install production dependencies
+cd ../backend
+echo "Installing BE prod deps..."
+pnpm install --prod --frozen-lockfile
 
 # Build frontend
 cd ../bidder-frontend
-pnpm install --prod --frozen-lockfile
+echo "Installing FE deps..."
+pnpm install --frozen-lockfile
+echo "Running FE build..."
 pnpm run build
 cp -R dist ../build
+
+# Cleanup
+rm -rf backend/package.json
+echo "Build completed successfully!"

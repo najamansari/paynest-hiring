@@ -1,15 +1,28 @@
-const { merge } = require('webpack-merge');
-const nodeExternals = require('webpack-node-externals');
 const path = require('path');
+const nodeExternals = require('webpack-node-externals');
 
-module.exports = (config) => {
-  return merge(config, {
+module.exports = (options) => {
+  return {
+    ...options,
+    entry: './serverless.ts',
     target: 'node',
     externals: [nodeExternals()],
     output: {
-      path: path.join(__dirname, 'dist'),
+      path: path.resolve(__dirname, 'dist'),
       filename: 'serverless.js',
       libraryTarget: 'commonjs',
     },
-  });
+    module: {
+      rules: [
+        {
+          test: /\.ts$/,
+          use: 'ts-loader',
+          exclude: /node_modules/,
+        },
+      ],
+    },
+    resolve: {
+      extensions: ['.ts', '.js'],
+    },
+  };
 };
