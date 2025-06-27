@@ -1,16 +1,28 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { join } from 'path';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { ItemsModule } from './items/items.module';
 import { BidsModule } from './bids/bids.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
+import { AppController } from './app.controller';
 import * as Joi from 'joi';
 
 @Module({
   imports: [
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'build'),
+      exclude: ['/api/{*path}'],
+      serveStaticOptions: {
+        index: 'index.html',
+        fallthrough: false,
+        dotfiles: 'ignore',
+      },
+    }),
     // ConfigModule should be first
     ConfigModule.forRoot({
       isGlobal: true, // Makes config available globally
@@ -40,6 +52,7 @@ import * as Joi from 'joi';
     }),
 
     ScheduleModule.forRoot(),
+
 
     AuthModule,
     UsersModule,
