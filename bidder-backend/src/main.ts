@@ -4,6 +4,9 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import { AppModule } from './app.module';
 import { UsersService } from './users/users.service';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import * as serverless from 'serverless-http';
+
+let cachedHandler: any;
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -40,3 +43,15 @@ async function bootstrap() {
   await app.listen(process.env.PORT || 3000);
 }
 void bootstrap();
+
+const proxyApi = async (module: any, event: any, context: any) => {
+  if (!cachedHadler) {
+    const app = await bootstrap(module);
+    cachedHadler = serverless(app);
+  }
+
+  return cachedHadler(event, context);
+};
+
+export const handler = async (event: any, context: any) =>
+  proxyApi(AppModule, event, context);
