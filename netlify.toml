@@ -1,0 +1,25 @@
+[build]
+  command = "pnpm build"
+  publish = "dist"  # Your React build directory
+  functions = "functions"  # For serverless functions
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+  conditions = {Role = ["!404", "!403"]}
+
+# Proxy API requests to your backend
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/server/:splat"
+  status = 200
+  force = true
+
+# Proxy WebSocket requests
+[[redirects]]
+  from = "/bids/*"
+  to = "/.netlify/functions/server/bids/:splat"
+  status = 200
+  force = true

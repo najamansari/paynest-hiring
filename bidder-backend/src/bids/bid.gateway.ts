@@ -10,10 +10,12 @@ import { JwtService } from '@nestjs/jwt';
 import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 
+const isProd: boolean = process.env.NODE_ENV === 'production'
+
 @WebSocketGateway({
-  namespace: '/bids',
+  namespace: isProd ? '/.netlify/functions/server/bids' : '/bids',
   cors: {
-    origin: '*', // Allow all for testing
+    origin: isProd ? 'https://paynest-hiring.netlify.app/' : '*',
     credentials: true,
   },
 })
