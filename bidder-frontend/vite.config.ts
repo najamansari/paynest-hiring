@@ -6,11 +6,19 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      // Proxy API requests from /api to your backend server
       '/api': {
-        target: 'http://localhost:3000', // <-- IMPORTANT: Replace with your actual backend URL
-        changeOrigin: true, // Needed for virtual hosted sites
-        rewrite: (path) => path.replace(/^\/api/, ''), // Remove /api prefix when forwarding
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+      '/socket.io': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        // rewrite: (path) => {
+        //   console.log(path)
+        //   return path.replace(/^\/socket\.io/, '')
+        // },
+        ws: true,
       },
     },
   },

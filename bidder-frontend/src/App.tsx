@@ -1,4 +1,5 @@
 import React, { useState, useEffect, createContext, useContext, ReactNode, useCallback, useMemo } from 'react';
+import { io, Socket } from 'socket.io-client'; // Import Socket.IO client
 
 // --- API Base URL ---
 // IMPORTANT: Change this to your actual backend API URL
@@ -48,12 +49,13 @@ interface UserContextType {
   isAuthenticated: boolean; // Based on backendAccessToken
   backendLogin: (username: string, password: string) => Promise<void>;
   backendLogout: () => Promise<void>;
+  userId: number | null; // Add userId to context
 }
 
 interface MessageContextType {
   message: string | null;
   type: 'success' | 'error' | 'info' | null;
-  showMessage: (msg: string, type: 'success' | 'error' | 'info') => void;
+  showMessage: (msg: string, type: 'success' | 'error' | 'info', onClickAction?: () => void) => void;
   clearMessage: () => void;
 }
 
@@ -95,9 +97,38 @@ const formatTimeLeft = (endTime: number) => {
   return `${days > 0 ? `${days}d ` : ''}${hours}h ${minutes}m ${seconds}s`;
 };
 
+// Utility to decode JWT token
+const decodeJwt = (token: string): { sub: number, username: string, iat: number, exp: number } | null => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    console.error("Error decoding JWT:", e);
+    return null;
+  }
+};
+
 // --- Providers ---
 const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [backendAccessToken, setBackendAccessToken] = useState<string | null>(localStorage.getItem('backend_access_token'));
+  const [userId, setUserId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (backendAccessToken) {
+      const decoded = decodeJwt(backendAccessToken);
+      if (decoded && decoded.sub) {
+        setUserId(decoded.sub);
+      } else {
+        setUserId(null);
+      }
+    } else {
+      setUserId(null);
+    }
+  }, [backendAccessToken]);
 
   // Backend authentication callbacks, memoized for stability
   const backendLogin = useCallback(async (username: string, password: string) => {
@@ -130,7 +161,8 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     isAuthenticated: !!backendAccessToken, // Frontend auth state derived from backend token
     backendLogin,
     backendLogout,
-  }), [backendAccessToken, backendLogin, backendLogout]); // Only re-create if backendAccessToken or the memoized functions change
+    userId,
+  }), [backendAccessToken, backendLogin, backendLogout, userId]); // Only re-create if backendAccessToken or the memoized functions change
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
@@ -139,22 +171,25 @@ const MessageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [message, setMessage] = useState<string | null>(null);
   const [type, setType] = useState<'success' | 'error' | 'info' | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [onClickAction, setOnClickAction] = useState<(() => void) | undefined>(undefined);
 
   // Memoize clearMessage as it's a dependency of showMessage
   const clearMessage = useCallback(() => {
     setMessage(null);
     setType(null);
+    setOnClickAction(undefined);
   }, []); // Dependencies are stable setters
 
   // Memoize showMessage
-  const showMessage = useCallback((msg: string, msgType: 'success' | 'error' | 'info') => {
+  const showMessage = useCallback((msg: string, msgType: 'success' | 'error' | 'info', action?: () => void) => {
     setMessage(msg);
     setType(msgType);
+    setOnClickAction(() => action); // Store the action to be called on click
     setIsVisible(true);
     setTimeout(() => {
       setIsVisible(false);
       setTimeout(() => clearMessage(), 300); // clearMessage is stable
-    }, 3000);
+    }, 5000); // Message stays visible for 5 seconds
   }, [clearMessage]); // Dependencies are stable setters and memoized clearMessage
 
   // Memoize the context value
@@ -169,13 +204,16 @@ const MessageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     <MessageContext.Provider value={value}>
       {children}
       {isVisible && (
-        <div className={`fixed bottom-4 right-4 p-4 rounded-lg shadow-lg transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'} ${
-          type === 'success' ? 'bg-green-500 text-white' :
-          type === 'error' ? 'bg-red-500 text-white' :
-          'bg-blue-500 text-white'
-        }`}>
+        <div
+          className={`fixed bottom-4 right-4 p-4 rounded-lg shadow-lg cursor-pointer transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'} ${
+            type === 'success' ? 'bg-green-500 text-white' :
+            type === 'error' ? 'bg-red-500 text-white' :
+            'bg-blue-500 text-white'
+          }`}
+          onClick={onClickAction} // Add onClick handler to the message div
+        >
           {message}
-          <button onClick={() => setIsVisible(false)} className="ml-4 font-bold text-lg leading-none">&times;</button>
+          <button onClick={(e) => { e.stopPropagation(); setIsVisible(false); }} className="ml-4 font-bold text-lg leading-none">&times;</button>
         </div>
       )}
     </MessageContext.Provider>
@@ -433,7 +471,7 @@ const CreateItem: React.FC<{ setCurrentPage: (page: string) => void }> = ({ setC
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [startingPrice, setStartingPrice] = useState<number>(0);
-  const [duration, setDuration] = useState<number>(60);
+  const [duration, setDuration] = useState<number>(60);;
   const [loading, setLoading] = useState(false);
   const { showMessage } = useMessage();
   const { isAuthenticated } = useAuth();
@@ -456,7 +494,7 @@ const CreateItem: React.FC<{ setCurrentPage: (page: string) => void }> = ({ setC
     setLoading(true);
     try {
       // Always use current time for activateAt as it's optional and not user-controlled
-      const activateAt = new Date().toISOString().slice(0, 19);
+      const activateAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
       const newItem: CreateItemDto = {
         name,
@@ -723,8 +761,10 @@ const AppContent: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<string>('auth'); // 'auth', 'dashboard', 'create-item', 'auction-detail'
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   // useAuth and useMessage can now be called safely here because AppContent is a child of the providers
-  const { isAuthenticated, backendLogout } = useAuth();
+  const { isAuthenticated, backendLogout, backendAccessToken, userId } = useAuth();
   const { showMessage } = useMessage();
+  const [socket, setSocket] = useState<Socket | null>(null);
+
 
   const handleSetPage = useCallback((page: string, itemId?: number) => {
     setSelectedItemId(itemId !== undefined ? itemId : null);
@@ -733,11 +773,99 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     // Redirect to dashboard if authenticated and not already on a specific item detail
-    // No isAuthReady check needed anymore since Firebase is removed.
     if (isAuthenticated && currentPage === 'auth') {
       setCurrentPage('dashboard');
     }
   }, [isAuthenticated, currentPage]);
+
+
+  // WebSocket integration
+  useEffect(() => {
+    if (isAuthenticated && backendAccessToken) {
+      // Connect to the WebSocket server
+      const newSocket = io('/bids', {
+        auth: { token: backendAccessToken },
+        transports: ['websocket'],
+        reconnection: true, // Allow reconnection attempts
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+      });
+
+      newSocket.on('connect', () => {
+        console.log('Socket Connected:', newSocket.id);
+      });
+
+      newSocket.on('disconnect', (reason) => {
+        console.log('Socket Disconnected:', reason);
+        // If server explicitly disconnects, don't try to reconnect unless it's a transient issue
+      });
+
+      newSocket.on('connect_error', (err) => {
+        console.error('Socket Connection Error:', err.message);
+      });
+
+      newSocket.on('newBid', async (data: { itemId: number; amount: number; bidderId: number }) => {
+        console.log('📢 NEW BID:', data);
+        const amount = parseFloat(data.amount);
+        try {
+          const item = await apiService.getItemById(data.itemId);
+          if (item) {
+            showMessage(
+              `New bid on ${item.name}! Bid amount: $${amount.toFixed(2)}.`,
+              'info',
+              () => handleSetPage('auction-detail', data.itemId) // Make message clickable
+            );
+          }
+        } catch (error) {
+          console.error("Error fetching item for new bid notification:", error);
+          showMessage("A new bid was placed on an item.", "info");
+        }
+      });
+
+      newSocket.on('winningBid', async (data: { itemId: number; amount: number; userId: number }) => {
+        console.log('🏆 WINNING BID:', data);
+        const amount = parseFloat(data.amount);
+        try {
+          const item = await apiService.getItemById(data.itemId);
+          if (item) {
+            if (userId === data.userId) { // Check if the current user won
+              showMessage(`Congratulations! You won the auction for ${item.name} for $${amount.toFixed(2)}!`, 'success');
+            } else {
+              showMessage(`${item.name} has been sold for $${amount.toFixed(2)}. Good luck with future auctions!`, 'info');
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching item for winning bid notification:", error);
+          showMessage("An auction has ended.", "info");
+        }
+      });
+
+      setSocket(newSocket);
+
+      // Clean up on unmount or authentication change
+      return () => {
+        console.log('Disconnecting socket...');
+        newSocket.disconnect();
+      };
+    } else if (socket) {
+      // If no longer authenticated, disconnect any existing socket
+      console.log('No longer authenticated, disconnecting socket...');
+      socket.disconnect();
+      setSocket(null);
+    }
+  }, [isAuthenticated, backendAccessToken, userId, showMessage, handleSetPage]); // Reconnect if auth state or token changes
+
+  // Effect to join/leave item rooms when selectedItemId changes
+  useEffect(() => {
+    if (socket && selectedItemId !== null) {
+      console.log(`Joining item room: ${selectedItemId}`);
+      socket.emit('joinItemRoom', { itemId: selectedItemId });
+    }
+    // No explicit 'leaveRoom' emitted here as the server might manage leaving when joining another room,
+    // or when the component unmounts for that item.
+    // If explicit leave is needed, could add a 'prevSelectedItemId' ref.
+  }, [socket, selectedItemId]);
 
 
   let content;
