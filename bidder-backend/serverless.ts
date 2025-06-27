@@ -1,7 +1,7 @@
 import { Context } from '@netlify/functions';
 import { Handler } from '@netlify/functions';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module.js';
+import { AppModule } from './app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import * as express from 'express';
 import * as serverless from 'serverless-http';

@@ -1,20 +1,19 @@
+#!/bin/bash
 
-# Install global dependencies (only needed for building)
-npm install -g pnpm
+# Install backend dependencies
+cd bidder-backend
+pnpm install --frozen-lockfile
+
+# Copy node_modules to backend directory
+mkdir -p ../backend
+cp -R node_modules ../backend/node_modules
 
 # Build backend
-cd bidder-backend
-pnpm install --frozen-lockfile  # Install all dependencies (including dev)
 pnpm run build
 cp -R dist ../backend
 
 # Build frontend
 cd ../bidder-frontend
-pnpm install --prod --frozen-lockfile  # Frontend can use --prod
+pnpm install --prod --frozen-lockfile
 pnpm run build
 cp -R dist ../build
-
-# Clean up unnecessary backend files to reduce size
-find ../backend -name "*.map" -type f -delete
-find ../backend -name "*.d.ts" -type f -delete
-rm -rf ../backend/node_modules
