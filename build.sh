@@ -33,3 +33,6 @@ cp -R dist ../build
 # Cleanup
 rm -rf backend/package.json
 echo "Build completed successfully!"
+
+cd ../
+find . -name serverless*
