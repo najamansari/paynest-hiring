@@ -9,7 +9,7 @@ cd bidder-backend
 
 pnpm install --frozen-lockfile
 echo "Running BE serverless build..."
-pnpm run build
+pnpm run build:serverless
 
 # Create backend directory structure
 mkdir -p ../backend
