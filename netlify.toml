@@ -1,23 +1,22 @@
 [build]
   command = "./build.sh"
-  publish = "backend"
-  functions = "functions"
+  publish = "build"  # Frontend build
+  functions = "functions"  # Backend functions
 
+# API routing
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-  force = false
-  conditions = {Role = ["!404", "!403"]}
-
-[[redirects]]
-  from = "/*"
+  from = "/api/*"
   to = "/.netlify/functions/server/:splat"
   status = 200
-  force = true
 
+# WebSocket routing
 [[redirects]]
   from = "/bids/*"
   to = "/.netlify/functions/server/bids/:splat"
   status = 200
-  force = true
+
+# Client-side routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -32,6 +32,11 @@ async function bootstrap() {
     credentials: true
   });
 
+  if (process.env.NETLIFY) {
+    // Don't start server in Netlify environment
+    return;
+  }
+
   await app.listen(process.env.PORT || 3000);
 }
 void bootstrap();
