@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Post, Body, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -32,5 +32,12 @@ export class ItemsController {
   @ApiResponse({ status: 200, description: 'List of items', type: [Item] })
   findAll() {
     return this.itemsService.getActiveAuctions();
+  }
+
+  @Get(':itemId')
+  @ApiOperation({ summary: 'Gets details of the requested item' })
+  @ApiResponse({ status: 200, description: 'Item details', type: Item })
+  async findItem(@Param('itemId') itemId: number) {
+    return this.itemsService.findItem(itemId);
   }
 }

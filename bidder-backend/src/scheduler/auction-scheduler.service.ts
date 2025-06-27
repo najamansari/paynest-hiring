@@ -13,7 +13,7 @@ export class AuctionScheduler {
     private bidsService: BidsService,
   ) {}
 
-  @Cron('*/10 * * * * *') // Check every 10 seconds
+  @Cron('*/30 * * * * *') // Check every 10 seconds
   async handleAuctionLifecycle() {
     console.log('Checking auctions that have ended');
     const now = new Date();

@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  IsDate,
+  IsISO8601,
   IsNumber,
   IsString,
   IsOptional,
@@ -35,7 +35,7 @@ export class CreateItemDto {
     description:
       'Optional time at which the auction should start. Defaults to the current time.',
   })
-  @IsDate()
+  @IsISO8601({strict:true})
   @IsOptional()
   activateAt?: Date; // Optional activation time
 }

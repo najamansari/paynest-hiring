@@ -18,7 +18,7 @@ export class ItemsService {
       throw new Error('Item data is required');
     }
     const now = new Date();
-    const activateAt = createItemDto.activateAt || now;
+    const activateAt = createItemDto.activateAt ? new Date(createItemDto.activateAt! + "Z") : now;
     const expireAt = new Date(
       activateAt.getTime() + createItemDto.duration * 1000,
     );
@@ -43,5 +43,9 @@ export class ItemsService {
       .andWhere('item.finalizedAt IS NULL')
       .orderBy('item.expireAt', 'ASC')
       .getMany();
+  }
+
+  async findItem(itemId: number): Promise<Item | null> {
+    return this.itemsRepository.findOne({ where: { id: itemId } });
   }
 }
