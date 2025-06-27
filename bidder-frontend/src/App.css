@@ -1,3 +1,12 @@
+@import "tailwindcss";
+
+@config {
+  content: [
+    './index.html',
+    './src/**/*.{js,ts,jsx,tsx}'
+  ];
+}
+
 #root {
   max-width: 1280px;
   margin: 0 auto;

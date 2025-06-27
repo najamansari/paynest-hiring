@@ -82,6 +82,7 @@ const useMessage = () => {
 const formatTimeLeft = (endTime: number) => {
   const now = Date.now();
   const timeLeft = endTime - now;
+
   if (isNaN(timeLeft) || timeLeft <= 0) {
     return 'Auction Ended';
   }
@@ -336,7 +337,7 @@ const Auth: React.FC<{ setCurrentPage: (page: string) => void }> = ({ setCurrent
 const Dashboard: React.FC<{ setCurrentPage: (page: string, itemId?: number) => void }> = ({ setCurrentPage }) => {
   const [items, setItems] = useState<AuctionItemDisplay[]>([]);
   const [loading, setLoading] = useState(true);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, backendLogout } = useAuth();
   const { showMessage } = useMessage();
 
   const fetchItems = useCallback(async () => {
@@ -362,6 +363,7 @@ const Dashboard: React.FC<{ setCurrentPage: (page: string, itemId?: number) => v
       }).sort((a, b) => new Date(b.activateAt).getTime() - new Date(a.activateAt).getTime()); // Sort by activateAt, newest first
       setItems(processedItems);
     } catch (error: any) {
+      backendLogout()
       showMessage(`Failed to load auction items: ${error.message}`, 'error');
     } finally {
       setLoading(false);
@@ -431,8 +433,7 @@ const CreateItem: React.FC<{ setCurrentPage: (page: string) => void }> = ({ setC
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [startingPrice, setStartingPrice] = useState<number>(0);
-  const [durationHours, setDurationHours] = useState<number>(24);
-  // Removed activateDateTime state and input
+  const [duration, setDuration] = useState<number>(60);
   const [loading, setLoading] = useState(false);
   const { showMessage } = useMessage();
   const { isAuthenticated } = useAuth();
@@ -447,22 +448,21 @@ const CreateItem: React.FC<{ setCurrentPage: (page: string) => void }> = ({ setC
       showMessage("Starting price must be greater than zero.", "error");
       return;
     }
-    if (durationHours <= 0) {
-      showMessage("Auction duration must be greater than zero hours.", "error");
+    if (duration <= 0) {
+      showMessage("Auction duration must be greater than zero seconds.", "error");
       return;
     }
 
     setLoading(true);
     try {
       // Always use current time for activateAt as it's optional and not user-controlled
-      const activateAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
-      const durationSeconds = durationHours * 3600; // Convert hours to seconds
+      const activateAt = new Date().toISOString().slice(0, 19);
 
       const newItem: CreateItemDto = {
         name,
         description,
         startingPrice,
-        duration: durationSeconds,
+        duration: duration,
         activateAt: activateAt,
       };
 
@@ -503,7 +503,6 @@ const CreateItem: React.FC<{ setCurrentPage: (page: string) => void }> = ({ setC
               className="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
             ></textarea>
           </div>
-          {/* Removed the datetime-local input for activateAt */}
           <div>
             <label htmlFor="startingPrice" className="block text-sm font-medium text-gray-700">Starting Price ($)</label>
             <input
@@ -518,12 +517,12 @@ const CreateItem: React.FC<{ setCurrentPage: (page: string) => void }> = ({ setC
             />
           </div>
           <div>
-            <label htmlFor="durationHours" className="block text-sm font-medium text-gray-700">Auction Duration (Hours)</label>
+            <label htmlFor="duration" className="block text-sm font-medium text-gray-700">Auction Duration (Seconds)</label>
             <input
               type="number"
-              id="durationHours"
-              value={durationHours}
-              onChange={(e) => setDurationHours(parseInt(e.target.value))}
+              id="duration"
+              value={duration}
+              onChange={(e) => setDuration(parseInt(e.target.value))}
               min="1"
               required
               className="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
@@ -727,10 +726,10 @@ const AppContent: React.FC = () => {
   const { isAuthenticated, backendLogout } = useAuth();
   const { showMessage } = useMessage();
 
-  const handleSetPage = (page: string, itemId?: number) => {
+  const handleSetPage = useCallback((page: string, itemId?: number) => {
     setSelectedItemId(itemId !== undefined ? itemId : null);
     setCurrentPage(page);
-  };
+  }, []); // Dependencies are stable setters
 
   useEffect(() => {
     // Redirect to dashboard if authenticated and not already on a specific item detail
