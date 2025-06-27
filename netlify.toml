@@ -1,6 +1,7 @@
 [build]
   command = "./build.sh"
   publish = "build"  # Frontend build
+  functions = "functions"
 
 # API routing
 [[redirects]]

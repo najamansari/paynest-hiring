@@ -4,12 +4,14 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import { AppModule } from './app.module';
 import { UsersService } from './users/users.service';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import * as serverless from 'serverless-http';
+import express from 'express';
+import serverless from 'serverless-http';
 
 let cachedHandler: any;
 
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+async function bootstrap(module: any) {
+  const expressApp = express();
+  const app = await NestFactory.create(module);
   app.useGlobalPipes(new ValidationPipe());
 
   // Seed users
@@ -37,20 +39,22 @@ async function bootstrap() {
 
   if (process.env.NETLIFY) {
     // Don't start server in Netlify environment
-    return;
+    return expressApp;
   }
 
   await app.listen(process.env.PORT || 3000);
+
+  return expressApp
 }
-void bootstrap();
+void bootstrap(AppModule);
 
 const proxyApi = async (module: any, event: any, context: any) => {
-  if (!cachedHadler) {
+  if (!cachedHandler) {
     const app = await bootstrap(module);
-    cachedHadler = serverless(app);
+    cachedHandler = serverless(app);
   }
 
-  return cachedHadler(event, context);
+  return cachedHandler(event, context);
 };
 
 export const handler = async (event: any, context: any) =>
