@@ -1,2 +1,2 @@
-const { handler } = require('../backend/src/serverless');
+const { handler } = require('../backend/dist/serverless');
 exports.handler = handler;
