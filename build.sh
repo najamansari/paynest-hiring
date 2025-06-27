@@ -6,7 +6,6 @@ echo "Initiating build process..."
 
 # Build backend with serverless config
 cd bidder-backend
-c
 pnpm install --frozen-lockfile
 echo "Running BE serverless build..."
 pnpm run build:serverless

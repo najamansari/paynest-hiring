@@ -4,7 +4,7 @@ const nodeExternals = require('webpack-node-externals');
 module.exports = (options) => {
   return {
     ...options,
-    entry: './serverless.ts',
+    entry: './src/serverless.ts',
     target: 'node',
     externals: [nodeExternals()],
     output: {
