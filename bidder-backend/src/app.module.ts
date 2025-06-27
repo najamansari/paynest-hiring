@@ -9,7 +9,6 @@ import { AuthModule } from './auth/auth.module';
 import { ItemsModule } from './items/items.module';
 import { BidsModule } from './bids/bids.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
-import { AppController } from './app.controller';
 import * as Joi from 'joi';
 
 @Module({
