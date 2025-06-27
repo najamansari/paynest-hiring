@@ -1,0 +1,17 @@
+# Generic ignores
+.git
+.DS_Store
+*.log
+
+# Docker specific
+Dockerfile
+.dockerignore
+
+# Frontend specific
+bidder-frontend/node_modules
+bidder-frontend/build
+bidder-frontend/.env
+
+# Backend specific
+bidder-backend/node_modules
+bidder-backend/.env
