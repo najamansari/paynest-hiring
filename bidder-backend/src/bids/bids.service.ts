@@ -3,7 +3,9 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { RedisService } from '@liaoliaots/nestjs-redis';
 import { InjectRepository } from '@nestjs/typeorm';
+import Redis from 'ioredis';
 import { Repository } from 'typeorm';
 import { Bid } from './bid.entity';
 import { BidGateway } from './bid.gateway';
@@ -12,6 +14,9 @@ import { User } from '../users/user.entity';
 
 @Injectable()
 export class BidsService {
+
+  private readonly redis: Redis;
+
   constructor(
     @InjectRepository(Bid)
     private bidsRepository: Repository<Bid>,
@@ -23,59 +28,80 @@ export class BidsService {
     private usersRepository: Repository<User>,
 
     private bidGateway: BidGateway,
-  ) {}
+
+    private readonly redisService: RedisService
+  ) {
+    this.redis = this.redisService.getOrThrow("bidder");
+  }
 
   async placeBid(itemId: number, userId: number, amount: number): Promise<Bid> {
-    // Validate user exists
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
-    if (!user) throw new NotFoundException('User not found');
-
-    // Validate item exists
-    const item = await this.itemsRepository.findOne({ where: { id: itemId } });
-    if (!item) throw new NotFoundException('Item not found');
-
-    const now = new Date();
-
-    // Check auction activation
-    if (now < item.activateAt) {
-      throw new BadRequestException('Auction has not started yet');
-    }
-
-    // Check auction expiration
-    if (now > item.expireAt) {
-      throw new BadRequestException('Auction has ended');
-    }
-
-    // Validate bid amount
-    if (amount <= item.currentPrice) {
-      throw new BadRequestException(
-        `Bid must be higher than current price ($${item.currentPrice})`,
-      );
-    }
-
-    // Update item's current price
-    item.currentPrice = amount;
-    await this.itemsRepository.save(item);
-
-    // Create new bid
-    const bid = this.bidsRepository.create({
-      amount,
-      item: { id: itemId },
-      user: { id: userId },
-    });
-
-    const savedBid = await this.bidsRepository.save(bid);
+    const cacheKey = `item:${itemId}:bids`;
+    const strFloat = amount.toFixed(2);
+    const roundedFloat = parseFloat(strFloat);
+    const bidId = `${userId}`;
 
     try {
-      this.bidGateway.broadcastNewBid(itemId, amount);
-      console.log('📢 Broadcast succeeded');
-    } catch (err) {
-      console.error('📢 Broadcast failed:', err);
+      const zaddPromise = this.redis.zadd(cacheKey, strFloat, bidId);
+
+      // Validate user exists
+      const user = await this.usersRepository.findOne({ where: { id: userId } });
+      if (!user) throw new NotFoundException('User not found');
+
+      // Validate item exists
+      const item = await this.itemsRepository.findOne({ where: { id: itemId } });
+      if (!item) throw new NotFoundException('Item not found');
+
+      const now = new Date();
+
+      // Check auction activation
+      if (now < item.activateAt) {
+        throw new BadRequestException('Auction has not started yet');
+      }
+
+      // Check auction expiration
+      if (now > item.expireAt) {
+        throw new BadRequestException('Auction has ended');
+      }
+
+      await zaddPromise;
+      const highestResult = await this.redis.zrevrange(cacheKey, 0, 0, 'WITHSCORES');
+      const highestAmount = highestResult.length > 0 ? parseFloat(highestResult[1]) : 0;
+
+      // Validate bid amount
+      if (roundedFloat < highestAmount) {
+        throw new BadRequestException(
+          `Bid must be higher than current price ($${highestAmount})`,
+        );
+      }
+
+      // Update item's current price
+      item.currentPrice = amount;
+      await this.itemsRepository.save(item);
+
+      // Create new bid
+      const bid = this.bidsRepository.create({
+        amount,
+        item: { id: itemId },
+        user: { id: userId },
+      });
+
+      const savedBid = await this.bidsRepository.save(bid);
+
+      try {
+        this.bidGateway.broadcastNewBid(itemId, amount);
+        console.log('📢 Broadcast succeeded');
+      } catch (err) {
+        console.error('📢 Broadcast failed:', err);
+      }
+
+      console.log(`New bid by user ${userId} on item ${itemId}: $${amount}`);
+
+      return savedBid;
+    } catch (error) {
+      throw error;
+    } finally {
+      await this.redis.zrem(cacheKey, bidId);
     }
-
-    console.log(`New bid by user ${userId} on item ${itemId}: $${amount}`);
-
-    return savedBid;
   }
 
   async getHighestBid(itemId: number): Promise<number> {

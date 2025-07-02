@@ -33,18 +33,18 @@ npm install
 ### 3. Configure environment
 Create a `.env` file in the root directory:
 
-```
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=yourpassword
-DB_DATABASE=bidding_db
-JWT_SECRET=your_secret_key
+```bash
+#!/bin/bash
+
+export DATABASE_URL=psql://bidder:bidder@10.158.219.254:5432/bidder
+export JWT_SECRET=your_secret_key
+export REDIS_URL=redis://localhost:6379
+
 ```
 
-### 4. Start PostgreSQL
+### 4. Start Dependencies
 
-Ensure PostgreSQL is running on your system.
+Ensure PostgreSQL and Redis are running on your system.
 
 ### 5. Run the application
 

@@ -3,6 +3,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
+import { RedisModule } from '@liaoliaots/nestjs-redis';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { ItemsModule } from './items/items.module';
@@ -28,6 +29,13 @@ import * as Joi from 'joi';
       ssl: { rejectUnauthorized: false },
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: process.env.NODE_ENV !== 'production',
+    }),
+
+    RedisModule.forRoot({
+      config: {
+        url: process.env.REDIS_URL,
+        namespace: 'bidder',
+      }
     }),
 
     ScheduleModule.forRoot(),
